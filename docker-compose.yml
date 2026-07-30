@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    container_name: inrain-backend
+    env_file:
+      - .env
+    ports:
+      - "3031:3031"
+    environment:
+      PORT: 3031
+    restart: unless-stopped
