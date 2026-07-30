@@ -1,0 +1,65 @@
+name: Deploy inrain-app-backend to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/inrain-app-backend:latest
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ github.token }}" | docker login ghcr.io \
+          -u ${{ github.actor }} --password-stdin
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $IMAGE_NAME .
+
+      - name: Push Docker Image
+        run: |
+          docker push $IMAGE_NAME
+
+      - name: Verify Server Connectivity
+        run: |
+          echo "Testing connectivity to server..."
+          timeout 10 bash -c 'cat < /dev/null > /dev/tcp/${{ secrets.SERVER_HOST }}/22' && \
+          echo "✓ SSH port 22 is reachable" || \
+          echo "✗ Cannot reach SSH port 22 - Check firewall, server status, and SERVER_HOST secret"
+
+      - name: SSH Deploy VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd /srv/inrain-app-backend
+
+            echo "${{ github.token }}" | docker login ghcr.io \
+            -u ${{ github.actor }} --password-stdin
+
+            echo "Pulling docker image..."
+            docker compose pull || { echo "Pull failed"; exit 1; }
+
+            echo "Starting containers..."
+            docker compose up -d || { echo "Compose up failed"; docker compose logs; exit 1; }
+
+            docker image prune -af
+
+            echo "Deployment successful"
+            docker ps
