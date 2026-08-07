@@ -31,11 +31,13 @@ async function saveTravel (payload, points) {
   return data
 }
 
-async function getTravelByUserID (userId) {
+async function getTravelByUserID (userId, startDate, endDate) {
   const { data, error } = await supabase
     .from(TRAVEL_TABLE)
     .select('*')
     .eq('User_ID', userId)
+    .gte('created_at', startDate)
+    .lte('created_at', endDate)
     .order('created_at', { ascending: false })
 
   if (error) {

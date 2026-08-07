@@ -125,14 +125,25 @@ app.get('/protected', authenticateToken, (req, res) => {
 // Add Expense Route
 app.post('/api/expenses', async (req, res) => {
   try {
-    const { userId, id, site, category, amount, notes, type, entryDate } =
-      req.body
+    const {
+      userId,
+      id,
+      site,
+      category,
+      amount,
+      notes,
+      type,
+      entryDate,
+      creditAmount,
+      credittedby
+    } = req.body
 
-    if (!site || !category || !amount) {
+    if (!site || !entryDate || !userId) {
       return res
         .status(400)
         .json({ success: false, error: 'Missing required fields' })
     }
+
     const payload = {
       id: id,
       created_at: new Date().toISOString(),
@@ -143,6 +154,8 @@ app.post('/api/expenses', async (req, res) => {
       type: type,
       amount: amount,
       entryDate: entryDate,
+      credit_by: credittedby,
+      credit_amount: creditAmount,
       updated_at: new Date().toISOString()
     }
 
@@ -159,8 +172,18 @@ app.post('/api/expenses', async (req, res) => {
 // Edit Expense Route
 app.put('/api/expenses/update', async (req, res) => {
   try {
-    const { userId, id, site, category, amount, notes, type, entryDate } =
-      req.body
+    const {
+      userId,
+      id,
+      site,
+      category,
+      amount,
+      notes,
+      type,
+      entryDate,
+      credittedby,
+      creditAmount
+    } = req.body
 
     if (!site || !category || !amount) {
       return res
@@ -174,6 +197,8 @@ app.put('/api/expenses/update', async (req, res) => {
       type: type,
       amount: amount,
       entryDate: entryDate,
+      credit_by: credittedby,
+      credit_amount: creditAmount,
       updated_at: new Date().toISOString()
     }
 
@@ -191,7 +216,17 @@ app.put('/api/expenses/update', async (req, res) => {
 app.get('/api/expenses', async (req, res) => {
   try {
     const { userId } = req.query
-    const expenses = await getExpensesByUserID(userId)
+
+    // Compute current month's start and end dates
+    const now = new Date()
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .split('T')[0] // e.g. '2026-08-01'
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      .toISOString()
+      .split('T')[0] // e.g. '2026-08-31'
+
+    const expenses = await getExpensesByUserID(userId, startDate, endDate)
     res.json({
       success: true,
       data: expenses
@@ -290,7 +325,17 @@ app.put('/api/conveyance/update', async (req, res) => {
 app.get('/api/conveyance', async (req, res) => {
   try {
     const { userId } = req.query
-    const expenses = await getConveyancesByUserID(userId)
+
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1 // 1-indexed
+    const pad = n => String(n).padStart(2, '0')
+
+    const startDate = `${year}-${pad(month)}-01T00:00:00.000Z`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59.999Z`
+
+    const expenses = await getConveyancesByUserID(userId, startDate, endDate)
     res.json({
       success: true,
       data: expenses
@@ -354,7 +399,17 @@ app.post('/api/map', async (req, res) => {
 app.get('/api/map', async (req, res) => {
   try {
     const { userId } = req.query
-    const expenses = await getTravelByUserID(userId)
+
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1 // 1-indexed
+    const pad = n => String(n).padStart(2, '0')
+
+    const startDate = `${year}-${pad(month)}-01T00:00:00.000Z`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59.999Z`
+
+    const expenses = await getTravelByUserID(userId, startDate, endDate)
     res.json({
       success: true,
       data: expenses
@@ -370,6 +425,6 @@ app.get('/api/map', async (req, res) => {
 })
 
 // Start the server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '192.168.31.247', () => {
   console.log(`Server is running on port ${PORT}`)
 })

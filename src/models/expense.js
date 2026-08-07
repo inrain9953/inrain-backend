@@ -34,11 +34,13 @@ async function getExpenseByID (id) {
 }
 
 // Fetches ALL expense rows belonging to a given user.
-async function getExpensesByUserID (userId) {
+async function getExpensesByUserID (userId, startDate, endDate) {
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .select('*')
     .eq('User_ID', userId)
+    .gte('entryDate', startDate)
+    .lte('entryDate', endDate)
     .order('created_at', { ascending: false })
 
   if (error) {
